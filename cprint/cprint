@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Formatting
+es_bold=1;es_dim=2;es_underlined=4;es_blink=5;es_reverse=7;es_hidden=8
+# Text Colors
+es_default=0;es_black=30;es_red=31;es_green=32;es_yellow=33
+es_blue=34;es_magenta=35;es_cyan=35;es_white=97
+# Background Colors
+es_bg_default=0;es_bg_black=40;es_bg_red=41;es_bg_green=42;es_bg_yellow=43
+es_bg_blue=44;es_bg_magenta=45;es_bg_cyan=45;es_bg_white=107
+
+# $1 - Text to be formatted
+# $2 - Comma seperated string of Required
+# 		styles and formatting
+# Eg. cprint "Hello World" red,bold,underline,bg_blue
+
+IFS="," read -r -a attrs <<< "$2"
+style_string="\\e["
+
+for attr in "${attrs[@]}"
+do
+	var="es_$attr"
+	style_string="$style_string"';'"${!var}"
+done
+
+style_string="$style_string"'m'
+
+printf "$style_string"
+printf "$1"
+printf "\e[0m"
