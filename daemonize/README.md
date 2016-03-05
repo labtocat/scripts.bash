@@ -12,7 +12,7 @@ Usage
 **Running previously setup daemons:**
 
 <pre>
-./daemonize redis,elastic,rabbitmq,mongo
+$ ./daemonize redis,elastic,rabbitmq,mongo
 </pre>
 
 **Output:**
@@ -36,7 +36,7 @@ Usage
 **Setting up new daemons:**
 
 <pre>
-./daemonize elastic
+$ ./daemonize elastic
 </pre>
 
 **Output:**
