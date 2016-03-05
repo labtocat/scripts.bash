@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Name : Bash Script to Turn off your Display
+# Author : Nakul Ezhuthupally 
+# URL : http://nakule.in
+
+trap bashtrap INT SIGHUP SIGINT SIGTERM
+
+bashtrap(){
+	xrandr --output $MONITORDEVICE --auto;
+	exit 0;
+}
+ISTHERE=$(which xrandr);
+
+if [ -z "$ISTHERE" ]; then
+	echo "Error!!! xrandr is not available....";
+	echo "Exiting......";
+else
+	echo "Found xrandr....";
+fi
+
+if [ -n "$2" ]; then
+	echo "Invalid no. of Arguments";
+	exit 0;
+fi
+
+MONITORDEVICE=$(xrandr | grep "\" | cut -f1 -d' ');
+
+if [ -z $1 ]; then
+	echo "Error!!! No time limit specified";
+else
+	echo "Preparing to turn the screen of for $1 minutes";
+	xrandr --output $MONITORDEVICE --off;
+	sleep $1'm';
+	xrandr --output $MONITORDEVICE --auto;
+fi
