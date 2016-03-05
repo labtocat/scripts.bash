@@ -1,0 +1,175 @@
+#!/bin/bash
+
+# Name : Bash Script to Turn off your Display
+# Author : Nakul Ezhuthupally 
+# URL : http://nakule.in
+
+echo
+if which launchctl > /dev/null; then
+	echo -n
+else
+	echo "This Program requires 'launchctl'"
+	exit 1
+fi
+
+# Function to Get User Input
+# and generate plist
+# files for configuring
+# Daemon Processes
+function generateXML(){
+	# Get User Input
+	# while [ ${#name} -eq 0 ]; do
+	# 	name=$(echo $name | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]')
+	# 	echo -n "Label for the Daemon (No Special Characters): "
+	# 	read -r name
+	# done
+	name=$(echo $1)
+	cmdf=""
+	while [ ${#cmdf} -eq 0 ]; do
+		echo -ne "\033[1m[$cmd]"
+		echo -ne "\033[0m"
+		echo -n " Command with Full Path (Eg. /usr/bin/$cmd /usr/share/$cmd.conf): "
+		read -r cmdf
+	done
+	IFS=' ' read -r -a cmdf <<< "$cmdf"
+
+	start='<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+		<plist version="1.0">
+			<dict>
+					<key>EnvironmentVariables</key>
+					<dict>
+						<key>PATH</key>
+						<string>%s:%s</string>
+					</dict>
+			        <key>KeepAlive</key>
+			        <true/>
+			        <key>Label</key>
+			        <string>daemonize.server.%s</string>
+				<key>RunAtLoad</key>
+			        <true/>
+			        <key>StandardErrorPath</key>
+			        <string>/tmp/daemonize.server.%s.stderr</string>
+			        <key>StandardOutPath</key>
+			        <string>/tmp/daemonize.server.%s.stdout</string>
+			        <key>WorkingDirectory</key>
+			        <string>/usr/local/var</string>'
+	gen='				<key>Program</key>
+				<string>%s</string>'
+	end='			</dict>
+		</plist>'
+
+	path=$(echo $cmdf[0] | rev | cut -f 2- -d/ | rev)
+	start=$(printf "$start" "$PATH" "$path" "$name" "$name" "$name")
+
+	if [ ${#cmdf[@]} -eq 1 ]; then
+		gen=$(printf "$gen" "${cmdf[0]}")
+	else
+		gen='<key>ProgramArguments</key>
+			<array>'
+		for el in ${cmdf[@]}; do
+			gen=$(echo -e "$gen\n<string>$el</string>")
+		done
+		gen=$(echo -e "$gen\n</array>")
+	fi
+
+	printf "%s\n%s\n%s\n" "$start" "$gen" "$end" > "$HOME/Library/LaunchAgents/daemonize.server.$name.plist"
+	# cat "$HOME/Library/LaunchAgents/daemonize.server.$name.plist"
+}
+
+IFS=',' read -r -a cmds <<< "$1"
+if [ ${#cmds[@]} -eq 0 ]; then
+	echo -ne "\033[31;4m"
+	echo "Please enter at least one Daemon to Run"
+	echo -ne "\033[0m"
+	echo -ne "\033[2m"
+	ls $HOME/Library/LaunchAgents/daemonize.server.*.plist | cut -f 3 -d. | while read s
+	do
+		echo -e "\t* $s"
+	done
+	echo -ne "\033[0m"
+	exit 1
+fi
+
+for cmd in ${cmds[@]}; do
+	ls "$HOME/Library/LaunchAgents/daemonize.server.${cmd}.plist" 2> /dev/null > /dev/null
+	if [ $? -eq 0 ]; then
+		echo -n
+	else
+		generateXML "$cmd"
+	fi
+
+	running=$(launchctl list | grep daemonize.server.$cmd | awk '{print $1}')
+	# launchctl list | grep daemonize.server.$cmd
+	# echo "RUNNING - $running"
+	if [ ${#running} -eq 0 ] || [ "$running" == "-" ]; then
+		echo -ne "\033[35m"
+		echo -n "(⇒) " 
+		echo -ne "\033[0m"
+		echo -n "trying to launch and daemonize $cmd"
+		# echo launchctl unload "$HOME/Library/LaunchAgents/daemonize.server.${cmd}.plist" 2> /dev/null
+		launchctl unload "$HOME/Library/LaunchAgents/daemonize.server.${cmd}.plist" > /dev/null 2> /dev/null
+		# echo launchctl load "$HOME/Library/LaunchAgents/daemonize.server.${cmd}.plist"
+		launchctl load "$HOME/Library/LaunchAgents/daemonize.server.${cmd}.plist" > /dev/null 2> /dev/null
+		sleep 3
+		running=$(launchctl list | grep daemonize.server.$cmd | awk '{print $1}')
+		# echo "RUNNING - $running"
+		# launchctl list | grep daemonize.server.$cmd
+		if [ ${#running} -eq 0 ] || [ "$running" == "-" ]; then
+			echo -ne "\033[31m"
+			echo -ne "\\r\033[K(✖) "
+			echo -ne "\033[0m"
+			echo "$cmd could not be started"
+		else
+			echo -ne "\033[32m"
+			echo -ne "\\r\033[K(✓) "
+			echo -ne "\033[0m"
+			echo "$cmd is running"
+		fi
+	else
+		echo -ne "\033[32m"
+		echo -n "(✓) " 
+		echo -ne "\033[0m"
+		echo " $cmd is already running"
+	fi
+done
+
+function cleanup {
+	for cmd in ${cmds[@]}; do
+		echo -ne "\033[35m"
+		echo -n "(⇒) "
+		echo -ne "\033[0m"
+		echo -n "trying to stop $cmd"
+		launchctl unload "$HOME/Library/LaunchAgents/daemonize.server.${cmd}.plist" > /dev/null 2> /dev/null
+		sleep 1
+		running=$(launchctl list | grep daemonize.server.$cmd | awk '{print $1}')
+		if [ ${#running} -eq 0 ] || [ "$running" = "-" ]; then
+			echo -ne "\033[31m"
+			echo -ne "\\r\033[K(✖) "
+			echo -ne "\033[0m"
+			echo "$cmd was stopped"
+		else
+			echo -ne "\033[32m"
+			echo -ne "\\r\033[K(✓) "
+			echo -ne "\033[0m"
+			echo "$cmd is still running"
+		fi
+	done
+	echo
+}
+
+trap cleanup EXIT
+
+# echo;echo "===================================================="
+# launchctl list | grep daemonize.server.
+# echo "===================================================="
+
+echo;echo -ne "\033[35m"
+echo -n "(Ctrl+C) "
+echo -ne "\033[0m"
+echo "to Interrupt";echo;
+
+while true
+do
+	sleep 1
+done
