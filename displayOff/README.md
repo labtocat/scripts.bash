@@ -1,4 +1,4 @@
-Bash Script to power off your display
+Power off your display
 =========================================
 
 This is a simple bash script which will power off your display for a given period of time. So, next time you decide to grab a cup of coffee, try powering off your display for a couple minutes.
