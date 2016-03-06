@@ -130,7 +130,7 @@ for cmd in ${cmds[@]}; do
 		echo -ne "\033[32m"
 		echo -n "(✓) " 
 		echo -ne "\033[0m"
-		echo " $cmd is already running"
+		echo "$cmd is already running"
 	fi
 done
 
